@@ -18,6 +18,7 @@ class MetaData:
             path1: a list of joint indices from FOOT to ROOT joint
             path2: a list of joint indices from ROOT to End joint
     '''
+
     def __init__(self, joint_name, joint_parent, joint_initial_position, root_joint, end_joint):
         self.joint_name = joint_name
         self.joint_parent = joint_parent
@@ -57,8 +58,10 @@ def inverse_kinematics(meta_data, global_joint_positions, global_joint_orientati
         chain_orientations: a list of joint orientations on the IK chain
     '''
     chain_positions = [global_joint_positions[joint_idx] for joint_idx in path]
-    chain_offsets = [np.array([0., 0., 0.])] + [meta_data.joint_initial_position[path[i + 1]] - meta_data.joint_initial_position[path[i]] for i in range(len(path) - 1)]
-    chain_orientations = [R.from_quat(global_joint_orientations[path[i]]) for i in range(len(path) - 1)] + [R.identity()]
+    chain_offsets = [np.array([0., 0., 0.])] + [meta_data.joint_initial_position[path[i + 1]] -
+                                                meta_data.joint_initial_position[path[i]] for i in range(len(path) - 1)]
+    chain_orientations = [R.from_quat(
+        global_joint_orientations[path[i]]) for i in range(len(path) - 1)] + [R.identity()]
 
     # Feel free to implement any other IK methods, bonus will be given
     if method == 'ccd':
@@ -89,23 +92,54 @@ def inverse_kinematics(meta_data, global_joint_positions, global_joint_orientati
                     6. The rotation matrix: rot_vec = R.from_rotvec(rot * axis)
                     7. Update orientation: new_orien = rot_vec * old_orien
                 '''
-                
+
                 ########## Code Start ############
-                
 
+                # Get the current joint position
+                current_pos = chain_positions[current_idx]
 
+                # Get the current end effector position
+                current_end_pos = chain_positions[end_idx]
 
+                # Compute the vector from current joint to end effector
+                vec_to_end = norm(current_end_pos - current_pos)
 
+                # Compute the vector from current joint to target position
+                vec_to_target = norm(target_pose - current_pos)
 
+                # Compute the dot product and clamp it to avoid numerical issues
+                dot = np.vdot(vec_to_end, vec_to_target)
+                dot = np.clip(dot, -1.0, 1.0)
 
-                
+                # Compute the angle between the two vectors
+                angle = np.arccos(dot)
+
+                # Check if the angle is valid and significant enough to apply rotation
+                if not np.isnan(angle) and angle > 1e-6:
+                    # Compute the rotation axis
+                    cross_prod = np.cross(vec_to_end, vec_to_target)
+                    norm_cross = np.linalg.norm(cross_prod)
+
+                    if norm_cross > 1e-6:
+                        axis = cross_prod / norm_cross
+
+                        # Create the rotation vector
+                        rot_vec = R.from_rotvec(angle * axis)
+
+                        # Update the orientation of the current joint
+                        chain_orientations[current_idx] = rot_vec * \
+                            chain_orientations[current_idx]
+
                 ########## Code End ############
 
-                chain_local_rotations = [chain_orientations[0]] + [chain_orientations[i].inv() * chain_orientations[i + 1] for i in range(len(path) - 1)]
+                chain_local_rotations = [chain_orientations[0]] + [chain_orientations[i].inv(
+                ) * chain_orientations[i + 1] for i in range(len(path) - 1)]
                 for j in range(current_idx, end_idx):
-                    chain_positions[j + 1] = chain_positions[j] + chain_orientations[j].apply(chain_offsets[j + 1])
+                    chain_positions[j + 1] = chain_positions[j] + \
+                        chain_orientations[j].apply(chain_offsets[j + 1])
                     if j + 1 < end_idx:
-                        chain_orientations[j + 1] = chain_orientations[j] * chain_local_rotations[j + 1]
+                        chain_orientations[j + 1] = chain_orientations[j] * \
+                            chain_local_rotations[j + 1]
                     else:
                         chain_orientations[j + 1] = chain_orientations[j]
 
@@ -113,25 +147,33 @@ def inverse_kinematics(meta_data, global_joint_positions, global_joint_orientati
     local_joint_rotations = [R.identity()]*len(meta_data.joint_parent)
     for joint_idx, parent_idx in enumerate(meta_data.joint_parent):
         if parent_idx == -1:
-            local_joint_rotations[joint_idx] = R.from_quat(global_joint_orientations[joint_idx])
+            local_joint_rotations[joint_idx] = R.from_quat(
+                global_joint_orientations[joint_idx])
         else:
-            local_joint_rotations[joint_idx] = R.from_quat(global_joint_orientations[parent_idx]).inv() * R.from_quat(global_joint_orientations[joint_idx])
+            local_joint_rotations[joint_idx] = R.from_quat(global_joint_orientations[parent_idx]).inv(
+            ) * R.from_quat(global_joint_orientations[joint_idx])
 
     for chain_idx, joint_idx in enumerate(path):
         global_joint_positions[joint_idx] = chain_positions[chain_idx]
-        global_joint_orientations[joint_idx] = chain_orientations[chain_idx].as_quat()
+        global_joint_orientations[joint_idx] = chain_orientations[chain_idx].as_quat(
+        )
 
     for chain_idx, joint_idx in enumerate(path2[:-1]):
-        global_joint_orientations[path2[chain_idx+1]] = chain_orientations[chain_idx].as_quat()
-    global_joint_orientations[path2[-1]] = chain_orientations[len(path2) - 1].as_quat()
+        global_joint_orientations[path2[chain_idx+1]
+                                  ] = chain_orientations[chain_idx].as_quat()
+    global_joint_orientations[path2[-1]
+                              ] = chain_orientations[len(path2) - 1].as_quat()
 
     for joint_idx, parent_idx in enumerate(meta_data.joint_parent):
         if parent_idx != -1 and meta_data.joint_name[joint_idx] not in path_name:
             parent_orientation = global_joint_orientations[parent_idx]
-            original_offset = meta_data.joint_initial_position[joint_idx] - meta_data.joint_initial_position[parent_idx]
-            rotated_offset = R.from_quat(parent_orientation).apply(original_offset)
+            original_offset = meta_data.joint_initial_position[joint_idx] - \
+                meta_data.joint_initial_position[parent_idx]
+            rotated_offset = R.from_quat(
+                parent_orientation).apply(original_offset)
             global_joint_positions[joint_idx] = global_joint_positions[parent_idx] + rotated_offset
-            global_joint_orientations[joint_idx] = (R.from_quat(global_joint_orientations[parent_idx]) * local_joint_rotations[joint_idx]).as_quat()
+            global_joint_orientations[joint_idx] = (R.from_quat(
+                global_joint_orientations[parent_idx]) * local_joint_rotations[joint_idx]).as_quat()
 
     return global_joint_positions, global_joint_orientations
 
@@ -142,11 +184,13 @@ def IK_example(viewer, target_pos, start_joint, end_joint):
     '''
     viewer.create_marker(target_pos, [1, 0, 0, 1])
     joint_name, joint_parent, joint_initial_position = viewer.get_meta_data()
-    meta_data = MetaData(joint_name, joint_parent, joint_initial_position, start_joint, end_joint)
+    meta_data = MetaData(joint_name, joint_parent,
+                         joint_initial_position, start_joint, end_joint)
     global_joint_position = viewer.get_joint_positions()
     global_joint_orientation = viewer.get_joint_orientations()
 
-    joint_position, joint_orientation = inverse_kinematics(meta_data, global_joint_position, global_joint_orientation, target_pos)
+    joint_position, joint_orientation = inverse_kinematics(
+        meta_data, global_joint_position, global_joint_orientation, target_pos)
     viewer.show_pose(joint_name, joint_position, joint_orientation)
     viewer.run()
     pass
@@ -159,7 +203,8 @@ def IK_interactive(viewer, target_pos, start_joint, end_joint):
     marker = viewer.create_marker(target_pos, [1, 0, 0, 1])
 
     joint_name, joint_parent, joint_initial_position = viewer.get_meta_data()
-    meta_data = MetaData(joint_name, joint_parent, joint_initial_position, start_joint, end_joint)
+    meta_data = MetaData(joint_name, joint_parent,
+                         joint_initial_position, start_joint, end_joint)
     joint_position = viewer.get_joint_positions()
     joint_orientation = viewer.get_joint_orientations()
 
@@ -171,8 +216,10 @@ def IK_interactive(viewer, target_pos, start_joint, end_joint):
 
         def update_func(self, viewer):
             target_pos = np.array(self.marker.getPos())
-            self.joint_position, self.joint_orientation = inverse_kinematics(meta_data, self.joint_position, self.joint_orientation, target_pos)
-            viewer.show_pose(joint_name, self.joint_position, self.joint_orientation)
+            self.joint_position, self.joint_orientation = inverse_kinematics(
+                meta_data, self.joint_position, self.joint_orientation, target_pos)
+            viewer.show_pose(joint_name, self.joint_position,
+                             self.joint_orientation)
     handle = UpdateHandle(marker, joint_position, joint_orientation)
     handle.update_func(viewer)
     viewer.update_marker_func = handle.update_func
@@ -186,11 +233,12 @@ def main():
     You should try different start and end joints and different target positions
     use WASD to move the control points in interactive mode (click the scene to activate the control points)
     '''
-    IK_example(viewer, np.array([0.5, 0.75, 0.5]), 'RootJoint', 'lWrist_end')
+    # IK_example(viewer, np.array([0.5, 0.75, 0.5]), 'RootJoint', 'lWrist_end')
     # IK_example(viewer, np.array([0.5, 0.75, 0.5]), 'lToeJoint_end', 'lWrist_end')
     # IK_interactive(viewer, np.array([0.5, 0.75, 0.5]), 'RootJoint', 'lWrist_end')
     # IK_interactive(viewer, np.array([0.5, 0.75, 0.5]), 'lToeJoint_end', 'lWrist_end')
-    # IK_interactive(viewer, np.array([0.5, 0.75, 0.5]), 'rToeJoint_end', 'lWrist_end')
+    IK_interactive(viewer, np.array(
+        [0.5, 0.75, 0.5]), 'rToeJoint_end', 'lWrist_end')
 
 
 if __name__ == "__main__":

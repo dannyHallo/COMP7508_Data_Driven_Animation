@@ -35,9 +35,17 @@ def part1_show_T_pose(viewer, joint_names, joint_parents, joint_offsets):
         '''
         ########## Code Start ############
 
+        if parent_idx == -1:
+            # move the entire skeleton up by 1 unit
+            global_joint_position[joint_idx] = np.squeeze([0, 1, 0])
+        else:
+            # global position is parent's global position plus the current joint's offset
+            global_joint_position[joint_idx] = global_joint_position[parent_idx] + \
+                np.squeeze(joint_offsets[joint_idx])
 
         ########## Code End ############
-        viewer.set_joint_position_by_name(joint_names[joint_idx], global_joint_position[joint_idx])
+        viewer.set_joint_position_by_name(
+            joint_names[joint_idx], global_joint_position[joint_idx])
 
     viewer.run()
 
@@ -46,7 +54,7 @@ def part2_forward_kinametic(viewer, joint_names, joint_parents, joint_offsets, j
     '''
     A function to calculate the global joint positions and orientations by FK
     F: Frame number;  J: Joint number
-   
+
     joint_names:    Shape - (J)     a list to store the name of each joit
     joint_parents:  Shape - (J)     a list to store the parent index of each joint, -1 means no parent
     joint_offsets:  Shape - (J, 1, 3)  an array to store the local offset to the parent joint
@@ -86,7 +94,35 @@ def part2_forward_kinametic(viewer, joint_names, joint_parents, joint_offsets, j
                
     '''
     ########## Code Start ############
-    
+
+    for f in range(frame_number):
+        for j in range(joint_number):
+            parent_idx = joint_parents[j]
+
+            # get the local rotation
+            local_rot_quat = joint_rotations[f, j]
+            local_rot = R.from_quat(local_rot_quat)
+
+            # root joint
+            if parent_idx == -1:
+                global_joint_positions[f, j] = joint_positions[f, j]
+                global_joint_orientations[f, j] = local_rot.as_quat()
+            else:
+                parent_pos = global_joint_positions[f, parent_idx]
+                parent_rot_quat = global_joint_orientations[f, parent_idx]
+                parent_rot = R.from_quat(parent_rot_quat)
+
+                # Get the local offset and apply the parent's rotation to it
+                rotated_offset = parent_rot.apply(joint_offsets[j])
+
+                # Compute the global position
+                global_pos = parent_pos + rotated_offset
+
+                global_joint_positions[f, j] = global_pos
+
+                # Compute the global orientation by combining parent's orientation with local rotation
+                global_ori = parent_rot * local_rot
+                global_joint_orientations[f, j] = global_ori.as_quat()
 
     ########## Code End ############
     if not show_animation:
@@ -124,14 +160,17 @@ def main():
         local_joint_positions:    Shape - (F, J, 3)   an array to store the local joint positions
         local_joint_rotations:    Shape - (F, J, 4)   an array to store the local joint rotation in quaternion representation
     '''
-    joint_names, joint_parents, channels, joint_offsets = bvh_reader.load_meta_data(bvh_file_path)
-    _, local_joint_positions, local_joint_rotations = bvh_reader.load_motion_data(bvh_file_path)
+    joint_names, joint_parents, channels, joint_offsets = bvh_reader.load_meta_data(
+        bvh_file_path)
+    _, local_joint_positions, local_joint_rotations = bvh_reader.load_motion_data(
+        bvh_file_path)
 
     # part 1
-    part1_show_T_pose(viewer, joint_names, joint_parents, joint_offsets)
+    # part1_show_T_pose(viewer, joint_names, joint_parents, joint_offsets)
 
     # part 2
-    # part2_forward_kinametic(viewer, joint_names, joint_parents, joint_offsets, local_joint_positions, local_joint_rotations, show_animation=True)
+    part2_forward_kinametic(viewer, joint_names, joint_parents, joint_offsets,
+                            local_joint_positions, local_joint_rotations, show_animation=True)
 
 
 if __name__ == "__main__":
