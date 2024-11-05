@@ -1,0 +1,6 @@
+{
+    "command-runner.commands": {
+        "run": "python env_test.py",
+        "activate conda": "conda activate COMP7508_1"
+    }
+}
