@@ -1,6 +1,6 @@
 {
-    "command-runner.commands": {
-        "run": "python env_test.py",
-        "activate conda": "conda activate COMP7508_1"
-    }
+  "command-runner.commands": {
+    "run task 1": "python task1_motion_editing.py",
+    "activate conda": "conda activate COMP7508_1"
+  }
 }
