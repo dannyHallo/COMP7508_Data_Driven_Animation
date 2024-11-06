@@ -401,7 +401,8 @@ class CharacterController:
                 query_feature[start_idx:end_idx] = (
                     future_rot[:, [0, 2]]).flatten()
 
-            normalized_query = self.db.normalize_features(query_feature)
+            normalized_query = self.db.normalize_features(
+                query_feature) * self.db.feature_weights
 
             # Do the query
             idx = self.db.query_tree.query(
