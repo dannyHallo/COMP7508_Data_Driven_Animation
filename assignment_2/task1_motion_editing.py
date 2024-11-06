@@ -122,7 +122,10 @@ Parameters:
 '''
 
 
-def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_index, between_frames, searching_frames=20, method='interpolation'):
+def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_index, between_frames, searching_frames=20, method='interpolation',
+                            halflife=0.0,
+                            frequency=0.5
+                            ):
     '''
     TODO: Implement following functions
     Hints:
@@ -227,9 +230,9 @@ def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_inde
         starting_positions_motion2
 
     # Now, we can interpolate between motion1's frame at real_i and motion2's adjusted position at index 0
-
     if method == 'interpolation':
-        # Perform interpolation between the matching frames
+        print('Interpolating...')
+
         between_local_pos = interpolation(
             motion1.local_joint_positions[real_i],
             motion2.local_joint_positions[real_j],
@@ -243,20 +246,12 @@ def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_inde
             method='slerp'
         )
     else:
-        # Perform inertialization
-        # Initialize offset and velocity for inertialization (per joint)
-        num_joints = motion1.local_joint_positions.shape[1]
+        print('Inertializing...')
+
         offset_positions = motion1.local_joint_positions[real_i].copy()
         velocity_positions = np.zeros_like(offset_positions)
 
-        offset_rotations = motion1.local_joint_rotations[real_i].copy()
-        velocity_rotations = np.zeros_like(offset_rotations)
-
         between_local_pos = []
-        # between_local_rot = []
-
-        halflife = 0.1
-        frequency = 5.0
 
         for f in range(between_frames):
             # Step iv.1: Calculate the current offset between motion1 and motion2
@@ -268,7 +263,7 @@ def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_inde
 
             # Apply spring decay to the offset
             decayed_offset, decayed_velocity = decay_spring_damper_exact(
-                current_offset, velocity_positions, halflife, dt=1.0/between_frames, frequency=frequency
+                current_offset, velocity_positions, halflife, dt=1.0 / between_frames, frequency=frequency
             )
 
             # Update the velocity
@@ -278,14 +273,6 @@ def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_inde
             interpolated_pos = current_pose_motion2 + decayed_offset
 
             between_local_pos.append(interpolated_pos)
-
-            # Similarly handle rotations using SLERP (simplified)
-            # For rotations, we'll use SLERP between motion1 and motion2 with a decayed alpha
-            # This is a simplification; for true inertialization, you'd apply a spring to quaternion space
-            # interp_rot = Slerp(
-            #     motion1.local_joint_rotations[real_i], motion2.local_joint_positions[real_j], (f+1)/between_frames)
-
-            # between_local_rot.append(interp_rot)
 
             between_local_rot = interpolation(
                 motion1.local_joint_rotations[real_i],
@@ -323,8 +310,8 @@ def part2_concatenate(viewer, between_frames, do_interp=True):
     start_frame_index = 0
 
     if do_interp:
-        method = 'interpolation'
-        # method = 'inertialization'
+        # method = 'interpolation'
+        method = 'inertialization'
         motion = concatenate_two_motions(
             walk_forward, run_forward, last_frame_index, start_frame_index, between_frames, method=method)
     else:
@@ -350,7 +337,7 @@ def main():
     # part1_key_framing(viewer, 10, 20)
     # part1_key_framing(viewer, 10, 30)
     # part2_concatenate(viewer, between_frames=8, do_interp=False)
-    part2_concatenate(viewer, between_frames=16)
+    part2_concatenate(viewer, between_frames=8)
     viewer.run()
 
 
