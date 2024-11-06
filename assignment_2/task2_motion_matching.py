@@ -525,19 +525,29 @@ def main():
     All the variable name can be found in the feature_mapping variable
     '''
 
-    # selected_feature_names = ['trajectoryPos2D', 'trajectoryRot2D']
-    # selected_feature_weights = [1, 1]
-
-    # selected_feature_names = ['lFootPos', 'rFootPos']
-    # selected_feature_weights = [0.75, 0.75]
-
-    selected_feature_names = ['lFootPos', 'rFootPos', 'lHandPos', 'rHandPos']
-    selected_feature_weights = [0.75, 0.75, 0.75, 0.75]
-
-    # selected_feature_names = ['lFootPos', 'rFootPos', 'lFootVel', 'rFootVel']
-    # selected_feature_weights = [0.75, 0.75, 1, 1]
-
-    assert len(selected_feature_names) == len(selected_feature_weights)
+    # Feature Selection for Motion Matching - Optimized Set
+    selected_feature_names = [
+        'hipPos',         # 3 dimensions
+        'hipRot',         # 3 dimensions
+        'hipVel',         # 3 dimensions
+        'lFootPos',       # 3 dimensions
+        'rFootPos',       # 3 dimensions
+        'lHandPos',       # 3 dimensions
+        'rHandPos',       # 3 dimensions
+        'trajectoryPos2D',  # 6 dimensions
+        'trajectoryRot2D'  # 6 dimensions
+    ]
+    selected_feature_weights = [
+        2.0,  # hipPos
+        1.5,  # hipRot
+        1.0,  # hipVel
+        1.0,  # lFootPos
+        1.0,  # rFootPos
+        1.0,  # lHandPos
+        1.0,  # rHandPos
+        0.5,  # trajectoryPos2D
+        0.5   # trajectoryRot2D
+    ]
 
     assert len(selected_feature_names) == len(
         selected_feature_weights), "Feature names and weights must match."
