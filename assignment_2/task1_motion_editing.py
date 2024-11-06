@@ -163,6 +163,24 @@ def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_inde
 
     ########## Code Start ############
 
+    # helper functions
+    def fast_negexp(x):
+        # Fast approximation of exp(-x)
+        return 1.0 / (1.0 + x + 0.48 * x**2 + 0.235 * x**3)
+
+    def decay_spring_damper_exact(offset, velocity, halflife, dt, frequency, eps=1e-5):
+        '''
+        Applies an exact spring-damper decay to the offset and velocity.
+        '''
+        y = (4.0 * np.log(2)) / (halflife + eps)
+        w = 2.0 * np.pi * frequency
+        # Update equations based on the spring-damper system
+        new_offset = fast_negexp(
+            # Decaying to zero
+            y * dt) * offset + (1 - fast_negexp(y * dt)) * 0.0
+        new_velocity = fast_negexp(y * dt) * velocity - y * new_offset
+        return new_offset, new_velocity
+
     # Get the searching windows for motion 1 and motion 2
     num_frames_1 = motion1.local_joint_rotations.shape[0]
     num_frames_2 = motion2.local_joint_rotations.shape[0]
@@ -210,19 +228,71 @@ def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_inde
 
     # Now, we can interpolate between motion1's frame at real_i and motion2's adjusted position at index 0
 
-    # Perform interpolation between the matching frames
-    between_local_pos = interpolation(
-        motion1.local_joint_positions[real_i],
-        motion2.local_joint_positions[real_j],
-        between_frames - 1,
-        method='linear'
-    )
-    between_local_rot = interpolation(
-        motion1.local_joint_rotations[real_i],
-        motion2.local_joint_rotations[real_j],
-        between_frames - 1,
-        method='slerp'
-    )
+    if method == 'interpolation':
+        # Perform interpolation between the matching frames
+        between_local_pos = interpolation(
+            motion1.local_joint_positions[real_i],
+            motion2.local_joint_positions[real_j],
+            between_frames - 1,
+            method='linear'
+        )
+        between_local_rot = interpolation(
+            motion1.local_joint_rotations[real_i],
+            motion2.local_joint_rotations[real_j],
+            between_frames - 1,
+            method='slerp'
+        )
+    else:
+        # Perform inertialization
+        # Initialize offset and velocity for inertialization (per joint)
+        num_joints = motion1.local_joint_positions.shape[1]
+        offset_positions = motion1.local_joint_positions[real_i].copy()
+        velocity_positions = np.zeros_like(offset_positions)
+
+        offset_rotations = motion1.local_joint_rotations[real_i].copy()
+        velocity_rotations = np.zeros_like(offset_rotations)
+
+        between_local_pos = []
+        # between_local_rot = []
+
+        halflife = 0.1
+        frequency = 5.0
+
+        for f in range(between_frames):
+            # Step iv.1: Calculate the current offset between motion1 and motion2
+            current_pose_motion1 = motion1.local_joint_positions[real_i]
+            current_pose_motion2 = motion2.local_joint_positions[real_j]
+
+            # Calculate the difference
+            current_offset = current_pose_motion1 - current_pose_motion2
+
+            # Apply spring decay to the offset
+            decayed_offset, decayed_velocity = decay_spring_damper_exact(
+                current_offset, velocity_positions, halflife, dt=1.0/between_frames, frequency=frequency
+            )
+
+            # Update the velocity
+            velocity_positions = decayed_velocity
+
+            # Apply the decayed offset to motion2's current frame
+            interpolated_pos = current_pose_motion2 + decayed_offset
+
+            between_local_pos.append(interpolated_pos)
+
+            # Similarly handle rotations using SLERP (simplified)
+            # For rotations, we'll use SLERP between motion1 and motion2 with a decayed alpha
+            # This is a simplification; for true inertialization, you'd apply a spring to quaternion space
+            # interp_rot = Slerp(
+            #     motion1.local_joint_rotations[real_i], motion2.local_joint_positions[real_j], (f+1)/between_frames)
+
+            # between_local_rot.append(interp_rot)
+
+            between_local_rot = interpolation(
+                motion1.local_joint_rotations[real_i],
+                motion2.local_joint_rotations[real_j],
+                between_frames - 1,
+                method='slerp'
+            )
 
     # Convert the lists to numpy arrays
     # Shape: (between_frames - 1, num_joints, 3)
@@ -253,8 +323,10 @@ def part2_concatenate(viewer, between_frames, do_interp=True):
     start_frame_index = 0
 
     if do_interp:
+        method = 'interpolation'
+        # method = 'inertialization'
         motion = concatenate_two_motions(
-            walk_forward, run_forward, last_frame_index, start_frame_index, between_frames, method='interpolation')
+            walk_forward, run_forward, last_frame_index, start_frame_index, between_frames, method=method)
     else:
         motion = walk_forward.raw_copy()
         motion.local_joint_positions = np.concatenate([walk_forward.local_joint_positions[:last_frame_index],
