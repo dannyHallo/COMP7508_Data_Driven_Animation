@@ -115,14 +115,14 @@ Parameters:
     - motion1: the first motion
     - motion2: the second motion
     - last_frame_index: the last frame index of the first motion
-    - start_frame_indx: the start frame index of the second motion
+    - start_frame_index: the start frame index of the second motion
     - between_frames: the number of frames between the two motions
     - searching_frames: the number of frames for searching the closest frame
     - method: the interpolation method, 'interpolation' or 'inertialization'
 '''
 
 
-def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_indx, between_frames, searching_frames=20, method='interpolation'):
+def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_index, between_frames, searching_frames=20, method='interpolation'):
     '''
     TODO: Implement following functions
     Hints:
@@ -132,7 +132,7 @@ def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_indx
         2. There are five steps in the concatenation:
             i) get the searching windows for motion 1 and motion 2 
                 win_1 = motion1.local_joint_rotations[last_frame_index - searching_frames:last_frame_index + searching_frames]
-                win_2 = motion2.local_joint_rotations[max(0, start_frame_indx - searching_frames):start_frame_indx + searching_frames]
+                win_2 = motion2.local_joint_rotations[max(0, start_frame_index - searching_frames):start_frame_index + searching_frames]
             ii) find the closest frame in motion 1 searching window and motion 2 searching window
                 * You can use similarity matrix in DTW (Dynamic Time Warping) to find the closest frame (motion editing slides)
                 * sim_matrix is a matrix with shape (win_1.shape[0], win_2.shape[0])
@@ -162,46 +162,73 @@ def concatenate_two_motions(motion1, motion2, last_frame_index, start_frame_indx
     '''
 
     ########## Code Start ############
-    # Step i) Get the searching windows
-    start_search_w1 = max(last_frame_index - searching_frames, 0)
-    end_search_w1 = last_frame_index + searching_frames
-    win_1_rot = motion1.local_joint_rotations[start_search_w1:end_search_w1]
 
-    start_search_w2 = max(start_frame_indx - searching_frames, 0)
-    end_search_w2 = start_frame_indx + searching_frames
-    win_2_rot = motion2.local_joint_rotations[start_search_w2:end_search_w2]
+    # Get the searching windows for motion 1 and motion 2
+    num_frames_1 = motion1.local_joint_rotations.shape[0]
+    num_frames_2 = motion2.local_joint_rotations.shape[0]
 
-    # Step ii) Calculate the similarity matrix
-    sim_matrix = np.zeros((win_1_rot.shape[0], win_2_rot.shape[0]))
-    for i in range(win_1_rot.shape[0]):
-        for j in range(win_2_rot.shape[0]):
-            sim_matrix[i, j] = np.linalg.norm(win_1_rot[i] - win_2_rot[j])
+    start_idx_1 = max(0, last_frame_index - searching_frames)
+    end_idx_1 = min(num_frames_1, last_frame_index + searching_frames)
 
-    # Step ii) Find the closest frame indices
-    min_idx = np.argmin(sim_matrix)
-    i, j = divmod(min_idx, sim_matrix.shape[1])
+    start_idx_2 = max(0, start_frame_index - searching_frames)
+    end_idx_2 = min(num_frames_2, start_frame_index + searching_frames)
 
-    # Step iii) Convert to real frame indices
-    real_i = start_search_w1 + i
-    real_j = start_search_w2 + j
+    # Shape: (window_size_1, num_joints, 4)
+    win_1 = motion1.local_joint_rotations[start_idx_1:end_idx_1]
+    # Shape: (window_size_2, num_joints, 4)
+    win_2 = motion2.local_joint_rotations[start_idx_2:end_idx_2]
 
-    # Step iv) Align root positions
-    # Assuming the first joint is the root joint
-    root_pos_motion1 = motion1.local_joint_positions[real_i][0]
-    root_pos_motion2 = motion2.local_joint_positions[real_j][0]
-    position_shift = root_pos_motion1 - root_pos_motion2
-    motion2_shifted_positions = motion2.local_joint_positions + position_shift
+    # Compute the similarity matrix between the two windows
+    # Flatten the rotations for easier computation
+    # Shape: (window_size_1, num_joints * 4)
+    win_1_flat = win_1.reshape(win_1.shape[0], -1)
+    # Shape: (window_size_2, num_joints * 4)
+    win_2_flat = win_2.reshape(win_2.shape[0], -1)
 
-    # Interpolate between real_i and real_j
-    left_pos = motion1.local_joint_positions[real_i]
-    right_pos = motion2_shifted_positions[real_j]
+    # Compute the Euclidean distances between each pair of frames
+    # Shape: (window_size_1, window_size_2, num_joints * 4)
+    diff = win_1_flat[:, np.newaxis, :] - win_2_flat[np.newaxis, :, :]
+    # Shape: (window_size_1, window_size_2)
+    sim_matrix = np.linalg.norm(diff, axis=2)
+
+    # Find the closest frames in the searching windows
+    min_idx = np.unravel_index(np.argmin(sim_matrix), sim_matrix.shape)
+    i, j = min_idx  # Indices in the searching windows
+
+    # Convert to indices in the original motion sequences
+    real_i = start_idx_1 + i
+    real_j = start_idx_2 + j
+
+    print(f'Closest frames: {real_i}, {real_j}')
+
+    starting_positions_motion1 = motion1.local_joint_positions[real_i]
+    starting_positions_motion2 = motion2.local_joint_positions[real_j]
+
+    # apply delta to motion2
+    motion2.local_joint_positions += starting_positions_motion1 - \
+        starting_positions_motion2
+
+    # Now, we can interpolate between motion1's frame at real_i and motion2's adjusted position at index 0
+
+    # Perform interpolation between the matching frames
     between_local_pos = interpolation(
-        left_pos, right_pos, between_frames, 'linear', True)
-
-    left_rot = motion1.local_joint_rotations[real_i]
-    right_rot = motion2.local_joint_rotations[real_j]
+        motion1.local_joint_positions[real_i],
+        motion2.local_joint_positions[real_j],
+        between_frames - 1,
+        method='linear'
+    )
     between_local_rot = interpolation(
-        left_rot, right_rot, between_frames, 'slerp', True)
+        motion1.local_joint_rotations[real_i],
+        motion2.local_joint_rotations[real_j],
+        between_frames - 1,
+        method='slerp'
+    )
+
+    # Convert the lists to numpy arrays
+    # Shape: (between_frames - 1, num_joints, 3)
+    between_local_pos = np.stack(between_local_pos)
+    # Shape: (between_frames - 1, num_joints, 4)
+    between_local_rot = np.stack(between_local_rot)
 
     ########## Code End ############
 
@@ -223,18 +250,18 @@ def part2_concatenate(viewer, between_frames, do_interp=True):
     run_forward.adjust_joint_name(walk_forward.joint_name)
 
     last_frame_index = 40
-    start_frame_indx = 0
+    start_frame_index = 0
 
     if do_interp:
         motion = concatenate_two_motions(
-            walk_forward, run_forward, last_frame_index, start_frame_indx, between_frames, method='interpolation')
+            walk_forward, run_forward, last_frame_index, start_frame_index, between_frames, method='interpolation')
     else:
         motion = walk_forward.raw_copy()
         motion.local_joint_positions = np.concatenate([walk_forward.local_joint_positions[:last_frame_index],
-                                                       run_forward.local_joint_positions[start_frame_indx:]],
+                                                       run_forward.local_joint_positions[start_frame_index:]],
                                                       axis=0)
         motion.local_joint_rotations = np.concatenate([walk_forward.local_joint_rotations[:last_frame_index],
-                                                       run_forward.local_joint_rotations[start_frame_indx:]],
+                                                       run_forward.local_joint_rotations[start_frame_index:]],
                                                       axis=0)
 
     translation, orientation = motion.batch_forward_kinematics()
@@ -250,8 +277,8 @@ def main():
     # part1_key_framing(viewer, 10, 5)
     # part1_key_framing(viewer, 10, 20)
     # part1_key_framing(viewer, 10, 30)
-    part2_concatenate(viewer, between_frames=8, do_interp=False)
-    # part2_concatenate(viewer, between_frames=8)
+    # part2_concatenate(viewer, between_frames=8, do_interp=False)
+    part2_concatenate(viewer, between_frames=16)
     viewer.run()
 
 
