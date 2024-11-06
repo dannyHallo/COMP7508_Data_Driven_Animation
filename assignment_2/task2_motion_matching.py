@@ -191,7 +191,7 @@ class Database():
         - pos:  (T, J, 3)     The global position for J joints for T frames 
         - rot:  (T, J, 4)     The global orientation for J joints for T frames 
         - vel:  (T, J, 3)     The velocity of J joints for T frames 
-        - avel: (T, J, 3)     The augular velocity of J joints for T frames
+        - avel: (T, J, 3)     The angular velocity of J joints for T frames
     Output:
         features:   (T, dim)  The features for each frame
     Hints:
@@ -538,6 +538,9 @@ def main():
     # selected_feature_weights = [0.75, 0.75, 1, 1]
 
     assert len(selected_feature_names) == len(selected_feature_weights)
+
+    assert len(selected_feature_names) == len(
+        selected_feature_weights), "Feature names and weights must match."
 
     character_controller = CharacterController(
         viewer, controller, selected_feature_names, selected_feature_weights)
