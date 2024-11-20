@@ -26,11 +26,15 @@ git clone https://github.com/LamWS/COMP7508_Data_Driven_Animation -b 2024b
 
 [Assignment 2 - Motion Processing and Motion Matching](./assignment_2)
 
+[Assignment 3 - Rigid Body Dynamics](./assignment_3)
+
 ## Tutorial Slides
 
 1. Basic Linear Algebra in Graphics [[slide](./COMP7508_ANI_T1.pdf)]
 2. Forward and Inverse Kinematics [[slide](./COMP7508_ANI_T2.pdf)]
 3. Motion Processing [[slide](./COMP7508_ANI_T3.pdf)]
 4. Real-time Character Control [[slide](./COMP7508_ANI_T4.pdf)]
+5. Introduction to Tachi [[slide](./COMP7508_ANI_T5.pdf)]
+6. Rigid-body Animation [[slide](./COMP7508_ANI_T6.pdf)]
 
 Please contact zycliao@cs.hku.hk if there is any question.
