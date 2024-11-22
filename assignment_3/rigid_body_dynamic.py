@@ -1,5 +1,6 @@
 import taichi as ti
 import numpy as np
+import time
 
 # Set up Taichi
 ti.init(arch=ti.cpu, debug=True)
@@ -250,27 +251,72 @@ canvas = window.get_canvas()
 canvas.set_background_color((1, 1, 1))
 scene = ti.ui.Scene()
 camera = ti.ui.Camera()
-# rendering frame rate is 1/60
-substeps = int(1 / 60 // dt)
-current_t = 0.0
 
-while window.running:
-    for i in range(substeps):
-        substep()
-        current_t += dt
 
-    camera.position(0.0, 0.0, 3)
-    camera.lookat(0.0, 0.0, 0)
-    scene.set_camera(camera)
+# original time controlling logic
+if True:
+    # rendering frame rate is 1/60
+    substeps = int(1 / 60 // dt)
+    current_t = 0.0
 
-    scene.point_light(pos=(0, 1, 2), color=(1, 1, 1))
-    scene.ambient_light((0.5, 0.5, 0.5))
+    while window.running:
+        for i in range(substeps):
+            substep()
+            current_t += dt
 
-    scene.mesh(particle_vertices,
-               indices=indices,
-               two_sided=True,
-               show_wireframe=True)
+        camera.position(0.0, 0.0, 3)
+        camera.lookat(0.0, 0.0, 0)
+        scene.set_camera(camera)
 
-    scene.lines(frame_vertices, color=(1, 0, 0), width=1)
-    canvas.scene(scene)
-    window.show()
+        scene.point_light(pos=(0, 1, 2), color=(1, 1, 1))
+        scene.ambient_light((0.5, 0.5, 0.5))
+
+        scene.mesh(particle_vertices,
+                   indices=indices,
+                   two_sided=True,
+                   show_wireframe=True)
+
+        scene.lines(frame_vertices, color=(1, 0, 0), width=1)
+        canvas.scene(scene)
+        window.show()
+
+else:
+    # Initialize simulation time tracking
+    previous_time = time.time()
+    accumulated_time = 0.0
+    max_substeps = 10  # Prevent too many substeps in a single frame
+
+    while window.running:
+        current_time = time.time()
+        frame_time = current_time - previous_time
+        previous_time = current_time
+
+        accumulated_time += frame_time
+        substeps_this_frame = 0
+
+        # Perform multiple substeps if enough time has been accumulated
+        while accumulated_time >= dt and substeps_this_frame < max_substeps:
+            substep()
+            accumulated_time -= dt
+            substeps_this_frame += 1
+
+        # Optional: If too much time has been accumulated, reset to prevent spiral of death
+        if substeps_this_frame == max_substeps:
+            accumulated_time = 0.0
+
+        # Rendering
+        camera.position(0.0, 0.0, 3)
+        camera.lookat(0.0, 0.0, 0)
+        scene.set_camera(camera)
+
+        scene.point_light(pos=(0, 1, 2), color=(1, 1, 1))
+        scene.ambient_light((0.5, 0.5, 0.5))
+
+        scene.mesh(particle_vertices,
+                   indices=indices,
+                   two_sided=True,
+                   show_wireframe=True)
+
+        scene.lines(frame_vertices, color=(1, 0, 0), width=1)
+        canvas.scene(scene)
+        window.show()
