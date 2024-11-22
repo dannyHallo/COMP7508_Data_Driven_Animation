@@ -31,9 +31,12 @@ vertices_np, faces_np = read_obj_file(file_path, scale=0.3)
 
 faces = ti.field(dtype=ti.i32, shape=faces_np.shape)
 # Particle state
-particle_vertices = ti.Vector.field(3, dtype=ti.f32, shape=vertices_np.shape[0])
-particle_origin_vertices = ti.Vector.field(3, dtype=ti.f32, shape=vertices_np.shape[0])
-particle_velocities = ti.Vector.field(3, dtype=ti.f32, shape=vertices_np.shape[0])
+particle_vertices = ti.Vector.field(
+    3, dtype=ti.f32, shape=vertices_np.shape[0])
+particle_origin_vertices = ti.Vector.field(
+    3, dtype=ti.f32, shape=vertices_np.shape[0])
+particle_velocities = ti.Vector.field(
+    3, dtype=ti.f32, shape=vertices_np.shape[0])
 particle_force = ti.Vector.field(3, dtype=float, shape=vertices_np.shape[0])
 
 # Body state
@@ -52,7 +55,7 @@ body_mass = ti.field(float, shape=())
 # We assume all particles have the same mass
 particle_mass = 1
 initial_velocity = ti.Vector([0.0, 0.0, 0.0])
-initial_angular_velocity = ti.Vector([0.0, 0, 0.0])
+initial_angular_velocity = ti.Vector([0.0, 0.0, 0.0])
 gravity = ti.Vector([0.0, -9.8, 0.0])
 # stiffness of the collision
 collision_stiffness = 1e4
@@ -110,7 +113,8 @@ def initial():
     body_angular_momentum[None] = inertia @ initial_angular_velocity
 
     # Initialize the rotation matrix and quaternion
-    body_rotation[None] = ti.Matrix([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    body_rotation[None] = ti.Matrix(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
     body_rotation_quaternion[None] = ti.Vector([1.0, 0.0, 0.0, 0.0])
 
 
@@ -134,7 +138,8 @@ def quaternion_to_matrix(q: ti.template()) -> ti.template():
     qy = q[2]
     qz = q[3]
     return ti.Matrix([[qw * qw + qx * qx - qy * qy - qz * qz, 2 * (qx * qy - qw * qz), 2 * (qx * qz + qw * qy)],
-                      [2 * (qx * qy + qw * qz), (qw * qw - qx * qx + qy * qy - qz * qz), 2 * (qy * qz - qw * qx)],
+                      [2 * (qx * qy + qw * qz), (qw * qw - qx * qx +
+                                                 qy * qy - qz * qz), 2 * (qy * qz - qw * qx)],
                       [2 * (qx * qz - qw * qy), 2 * (qy * qz + qw * qx), qw * qw - qx * qx - qy * qy + qz * qz]])
 
 
@@ -198,9 +203,11 @@ def substep():
 
     # update the particles
     for i in ti.grouped(particle_vertices):
-        ri = body_rotation[None] @ (particle_origin_vertices[i] - body_origin_cm_position[None])
+        ri = body_rotation[None] @ (particle_origin_vertices[i] -
+                                    body_origin_cm_position[None])
         particle_vertices[i] = ri + body_cm_position[None]
-        particle_velocities[i] = body_velocity[None] + ti.math.cross(body_angular_velocity[None], ri)
+        particle_velocities[i] = body_velocity[None] + \
+            ti.math.cross(body_angular_velocity[None], ri)
 
 
 # GUI stuff

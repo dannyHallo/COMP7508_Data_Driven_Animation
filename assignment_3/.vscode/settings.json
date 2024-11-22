@@ -1,0 +1,6 @@
+{
+  "command-runner.commands": {
+    "activate": "conda activate comp3360",
+    "run assignment 3": "python rigid_body_dynamic.py"
+  }
+}

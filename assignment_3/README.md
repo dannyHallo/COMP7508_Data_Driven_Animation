@@ -23,7 +23,7 @@ In this assignment, we will explore how to implement a simple rigid body simulat
 
 We will begin by reviewing the basic principles of rigid body dynamics, including the equations of motion and the kinematics of rotation and translation.
 
-Using these tools, we will develop a Python program that simulates the motion of a rigid body in response to external forces and torques, such as gravity, friction, and collisions. 
+Using these tools, we will develop a Python program that simulates the motion of a rigid body in response to external forces and torques, such as gravity, friction, and collisions.
 
 By the end of this assignment, you will have gained a solid understanding of the principles of rigid body simulation and how to implement them using Python and Taichi. You will also have developed practical skills in numerical computing, programming, and visualization that can be applied to a wide range of scientific and engineering problems.
 
@@ -33,26 +33,22 @@ Here are some examples of the sucessfully implemented simulator.
 
 Ball Dropping without changing any of the simulation parameters.
 
-https://user-images.githubusercontent.com/43705353/231971484-f043cb9c-b53b-43cc-9220-c69b3c60fc4c.mov
-
+[](1.mov)
 
 Ball Dropping with initial velocity [3, 0, 0].
 
-https://user-images.githubusercontent.com/43705353/231971536-5b57bb7c-e12c-49bd-806f-c7208e933eb1.mov
-
+[](2.mov)
 
 Ball Dropping with initial velocity [3, 0, 0] and collision damping stiffness 1e4, friction coefficient 0.5 on the ground.
 
-https://user-images.githubusercontent.com/43705353/231973213-6caa0c81-3eab-4b0f-bbbf-e878ca193215.mov
-
-
+[](3.mov)
 
 ## Environment
 
 ### New environment
 
 ```bash
-# recommend to use Anaconda to manage enviroment 
+# recommend to use Anaconda to manage enviroment
 $ conda create -n comp3360 python=3.10
 $ conda activate comp3360
 $ conda install numpy scipy
@@ -79,9 +75,9 @@ You are strongly suggested to spend 30-60 mins to go through https://www.cs.cmu.
 
 ## Task 2 (Bonus)
 
-Once you have implemented the basic simulator, there is an opportunity to enhance its functionality by adding additional features. For instance, you may consider implementing damping and friction to improve the simulator. 
+Once you have implemented the basic simulator, there is an opportunity to enhance its functionality by adding additional features. For instance, you may consider implementing damping and friction to improve the simulator.
 
-If you are unable to implement additional features, you may still propose your ideas on how to improve the simulator in your report (For example, One possible way to model friction is to use the equation $\mu N v_d$, where mu represents the friction coefficient, N represents the pressure, and vd represents the direction of velocity.). 
+If you are unable to implement additional features, you may still propose your ideas on how to improve the simulator in your report (For example, One possible way to model friction is to use the equation $\mu N v_d$, where mu represents the friction coefficient, N represents the pressure, and vd represents the direction of velocity.).
 
 If your proposal is deemed reasonable, you may be rewarded with a bonus.
 
@@ -89,6 +85,6 @@ If your proposal is deemed reasonable, you may be rewarded with a bonus.
 
 - PDF format, no page size requirement, so you can also prepare it with PowerPoint or keynote or markdown
 - The first two lines should introduce your NAME and UID.
-- Should include 
+- Should include
   - Your simulation parameters. (initial_velocity, initial_angular_velocity, etc.)
   - Task 2, Your idea to improve the simulator. (If any)
