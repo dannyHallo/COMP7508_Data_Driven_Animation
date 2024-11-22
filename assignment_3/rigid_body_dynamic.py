@@ -92,7 +92,7 @@ def initial():
     # Compute the inertia of the body
     inertia = ti.Matrix([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
 
-    # TODO 1: Compute the inertia tensor of the body
+    # TODO: 1: Compute the inertia tensor of the body
     # Hint: You can use the function ti.Matrix.outer_product to compute v*v^T
     # Hint: You can use the function ti.Matrix.dot to compute v^T*v
     # Hint: You can use the function ti.Matrix.identity(float, 3) to get a 3x3 identity matrix
@@ -114,7 +114,9 @@ def initial():
 
     # Initialize the rotation matrix and quaternion
     body_rotation[None] = ti.Matrix(
-        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+        [[1.0, 0.0, 0.0],
+         [0.0, 1.0, 0.0],
+         [0.0, 0.0, 1.0]])
     body_rotation_quaternion[None] = ti.Vector([1.0, 0.0, 0.0, 0.0])
 
 
@@ -145,9 +147,9 @@ def quaternion_to_matrix(q: ti.template()) -> ti.template():
 
 @ti.kernel
 def substep():
-    # computer the force on each particle
+    # Compute the force on each particle
     for i in ti.grouped(particle_vertices):
-        # TODO 2: gravity
+        # TODO: 2: gravity
         # particle_force[i] =
 
         # Collision force, we use a spring model to simulate the collision
@@ -167,17 +169,15 @@ def substep():
             f_collision = collision_stiffness * (1 - particle_vertices[i][2])
             particle_force[i] += ti.Vector([0, 0, f_collision])
 
-    # computer the force for rigid body
+    # Compute the force for rigid body
     body_force = ti.Vector([0.0, 0.0, 0.0])
     for i in ti.grouped(particle_vertices):
-        # TODO 3: compute the force for rigid body
-        # body_force +=
-        pass
+        # TODO: 3: compute the force for rigid body
 
-    # computer the torque for rigid body
+    # Compute the torque for rigid body
     body_torque = ti.Vector([0.0, 0.0, 0.0])
     for i in ti.grouped(particle_vertices):
-        # TODO 4: compute the torque for rigid body
+        # TODO: 4: compute the torque for rigid body
         # Hint: use ti.math.cross(v1, v2) to compute the cross product
         # torque +=
         pass
@@ -195,13 +195,14 @@ def substep():
     body_rotation_quaternion[None] /= body_rotation_quaternion[None].norm()
     body_rotation[None] = quaternion_to_matrix(body_rotation_quaternion[None])
 
-    # TODO 7: update, the angular momentum, inertia tensor and angular velocity
+    # TODO: 7: update, the angular momentum, inertia tensor and angular velocity
     # hint: use A @ B to do matrix multiplication, use A.transpose() to get the transpose of A
     # body_angular_momentum[None] =
     # body_inverse_inertia =
     # body_angular_velocity[None] =
 
     # update the particles
+    # Update the particles
     for i in ti.grouped(particle_vertices):
         ri = body_rotation[None] @ (particle_origin_vertices[i] -
                                     body_origin_cm_position[None])
