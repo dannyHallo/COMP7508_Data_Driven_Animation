@@ -55,7 +55,7 @@ body_mass = ti.field(float, shape=())
 # Simulation parameters, feel free to change them
 # We assume all particles have the same mass
 particle_mass = 1
-initial_velocity = ti.Vector([0.0, 0.0, 0.0])
+initial_velocity = ti.Vector([4.0, 2.0, 3.0])
 initial_angular_velocity = ti.Vector([0.0, 0.0, 0.0])
 gravity = ti.Vector([0.0, -9.8, 0.0])
 # stiffness of the collision
@@ -98,7 +98,6 @@ def initial():
     # Hint: You can use the function ti.Matrix.dot to compute v^T*v
     # Hint: You can use the function ti.Matrix.identity(float, 3) to get a 3x3 identity matrix
     for i in ti.grouped(particle_vertices):
-        # inertia += particle_mass * ((particle_vertices[i] - body_cm_position[None]).dot(
         r = particle_vertices[i] - body_cm_position[None]
         inertia += particle_mass * \
             (r.dot(r) * ti.Matrix.identity(float, 3) - r.outer_product(r))
@@ -153,8 +152,7 @@ def substep():
     # Compute the force on each particle
     for i in ti.grouped(particle_vertices):
         # TODO: 2: gravity
-        # done
-        particle_force[i] += gravity * particle_mass
+        particle_force[i] = gravity * particle_mass
 
         # Collision force, we use a spring model to simulate the collision
         if particle_vertices[i][1] < -1:
@@ -177,7 +175,6 @@ def substep():
     body_force = ti.Vector([0.0, 0.0, 0.0])
     for i in ti.grouped(particle_vertices):
         # TODO: 3: compute the force for rigid body
-        # body_force += particle_force[i]
         body_force += particle_force[i]
 
     # Compute the torque for rigid body
@@ -185,20 +182,15 @@ def substep():
     for i in ti.grouped(particle_vertices):
         # TODO: 4: compute the torque for rigid body
         # Hint: use ti.math.cross(v1, v2) to compute the cross product
-        # torque += cross(r_i, particle_force[i])
         r_i = particle_vertices[i] - body_cm_position[None]
         body_torque += ti.math.cross(r_i, particle_force[i])
 
     # Update the rigid body
     # TODO: 5: update the center of mass position and velocity
-    # body_velocity[None] += (body_force / body_mass) * dt
-    # body_cm_position[None] += body_velocity[None] * dt
     body_velocity[None] += (body_force / body_mass[None]) * dt
     body_cm_position[None] += body_velocity[None] * dt
 
     # TODO: 6: update the rotation quaternion
-    # d_q = 0.5 * quaternion_multiplication(ti.Vector([0, omega.x, omega.y, omega.z]), body_rotation_quaternion[None])
-    # body_rotation_quaternion[None] += d_q * dt
     omega = body_angular_velocity[None]
     d_q = 0.5 * quaternion_multiplication(
         ti.Vector([0.0, omega[0], omega[1], omega[2]]), body_rotation_quaternion[None])
@@ -210,14 +202,8 @@ def substep():
 
     # TODO: 7: update, the angular momentum, inertia tensor and angular velocity
     # hint: use A @ B to do matrix multiplication, use A.transpose() to get the transpose of A
-    # body_angular_momentum[None] =
-    # body_inverse_inertia =
-    # body_angular_velocity[None] =
 
     # update the particles
-    # body_angular_momentum[None] += body_torque * dt
-    # world_inverse_inertia = body_rotation @ body_origin_inverse_inertia @ body_rotation.transpose()
-    # body_angular_velocity[None] = world_inverse_inertia @ body_angular_momentum[None]
     body_angular_momentum[None] += body_torque * dt
     world_inverse_inertia = body_rotation[None] @ body_origin_inverse_inertia[None] @ body_rotation[None].transpose()
     body_angular_velocity[None] = world_inverse_inertia @ body_angular_momentum[None]
@@ -252,71 +238,26 @@ canvas.set_background_color((1, 1, 1))
 scene = ti.ui.Scene()
 camera = ti.ui.Camera()
 
+substeps = int(1 / 120 // dt)
+current_t = 0.0
 
-# original time controlling logic
-if True:
-    # rendering frame rate is 1/60
-    substeps = int(1 / 60 // dt)
-    current_t = 0.0
+while window.running:
+    for i in range(substeps):
+        substep()
+        current_t += dt
 
-    while window.running:
-        for i in range(substeps):
-            substep()
-            current_t += dt
+    camera.position(0.0, 0.0, 3)
+    camera.lookat(0.0, 0.0, 0)
+    scene.set_camera(camera)
 
-        camera.position(0.0, 0.0, 3)
-        camera.lookat(0.0, 0.0, 0)
-        scene.set_camera(camera)
+    scene.point_light(pos=(0, 1, 2), color=(1, 1, 1))
+    scene.ambient_light((0.5, 0.5, 0.5))
 
-        scene.point_light(pos=(0, 1, 2), color=(1, 1, 1))
-        scene.ambient_light((0.5, 0.5, 0.5))
+    scene.mesh(particle_vertices,
+                indices=indices,
+                two_sided=True,
+                show_wireframe=True)
 
-        scene.mesh(particle_vertices,
-                   indices=indices,
-                   two_sided=True,
-                   show_wireframe=True)
-
-        scene.lines(frame_vertices, color=(1, 0, 0), width=1)
-        canvas.scene(scene)
-        window.show()
-
-else:
-    # Initialize simulation time tracking
-    previous_time = time.time()
-    accumulated_time = 0.0
-    max_substeps = 10  # Prevent too many substeps in a single frame
-
-    while window.running:
-        current_time = time.time()
-        frame_time = current_time - previous_time
-        previous_time = current_time
-
-        accumulated_time += frame_time
-        substeps_this_frame = 0
-
-        # Perform multiple substeps if enough time has been accumulated
-        while accumulated_time >= dt and substeps_this_frame < max_substeps:
-            substep()
-            accumulated_time -= dt
-            substeps_this_frame += 1
-
-        # Optional: If too much time has been accumulated, reset to prevent spiral of death
-        if substeps_this_frame == max_substeps:
-            accumulated_time = 0.0
-
-        # Rendering
-        camera.position(0.0, 0.0, 3)
-        camera.lookat(0.0, 0.0, 0)
-        scene.set_camera(camera)
-
-        scene.point_light(pos=(0, 1, 2), color=(1, 1, 1))
-        scene.ambient_light((0.5, 0.5, 0.5))
-
-        scene.mesh(particle_vertices,
-                   indices=indices,
-                   two_sided=True,
-                   show_wireframe=True)
-
-        scene.lines(frame_vertices, color=(1, 0, 0), width=1)
-        canvas.scene(scene)
-        window.show()
+    scene.lines(frame_vertices, color=(1, 0, 0), width=1)
+    canvas.scene(scene)
+    window.show()
