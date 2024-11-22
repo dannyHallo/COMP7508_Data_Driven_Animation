@@ -153,7 +153,7 @@ def substep():
         # TODO: 2: gravity
         particle_force[i] = gravity * particle_mass
 
-        # TODO: * Add velocity damping *
+        # TODO: Add velocity damping
         # Apply damping force proportional to the particle's velocity
         particle_force[i] -= velocity_damping_stiffness * \
             particle_velocities[i]
