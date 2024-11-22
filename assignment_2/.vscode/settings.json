@@ -1,0 +1,7 @@
+{
+  "command-runner.commands": {
+    "run task 1": "python task1_motion_editing.py",
+    "run task 2": "python task2_motion_matching.py",
+    "activate conda": "conda activate COMP7508_1"
+  }
+}

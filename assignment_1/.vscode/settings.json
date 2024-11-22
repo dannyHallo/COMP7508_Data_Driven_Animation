@@ -1,0 +1,6 @@
+{
+  "command-runner.commands": {
+    "task2": "conda activate COMP7508_1 && python task2_forward_kinematic.py",
+    "task3": "conda activate COMP7508_1 && python task3_inverse_kinematic.py"
+  }
+}
