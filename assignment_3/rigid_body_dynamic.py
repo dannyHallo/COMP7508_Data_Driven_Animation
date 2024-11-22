@@ -1,6 +1,5 @@
 import taichi as ti
 import numpy as np
-import time
 
 # Set up Taichi
 ti.init(arch=ti.cpu, debug=True)
@@ -56,7 +55,7 @@ body_mass = ti.field(float, shape=())
 # We assume all particles have the same mass
 particle_mass = 1
 initial_velocity = ti.Vector([4.0, 2.0, 3.0])
-initial_angular_velocity = ti.Vector([0.0, 0.0, 0.0])
+initial_angular_velocity = ti.Vector([0.0, 100.0, 0.0])
 gravity = ti.Vector([0.0, -9.8, 0.0])
 # stiffness of the collision
 collision_stiffness = 1e4
